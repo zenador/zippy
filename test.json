@@ -1,0 +1,14 @@
+[
+	{
+		"latitude": 0.04,
+		"longitude": 0.02,
+		"level": 2,
+		"name": "water"
+	},
+	{
+		"latitude": 0.03,
+		"longitude": 0.05,
+		"level": 3,
+		"name": "fire"
+	}
+]

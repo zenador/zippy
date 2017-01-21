@@ -4,12 +4,24 @@ input[type="number"] {
 
 div.outer {
   position: fixed;
-  top: 41px;
+  top: 50.8px;
   left: 0;
   right: 0;
   bottom: 0;
   overflow: hidden;
   padding: 0;
+}
+
+.graphPanel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+}
+
+#ggvisPanel, #plotlyPanel {
+  padding: 20px;
 }
 
 /* Customize fonts */
@@ -22,7 +34,8 @@ h1, h2, h3, h4 { font-weight: 400; }
 #controls {
   /* Appearance */
   background-color: white;
-  padding: 0 20px 20px 20px;
+  padding: 20px;
+  margin-top: 20px;
   cursor: move;
   /* Fade out while not hovering */
   opacity: 0.65;
@@ -33,14 +46,6 @@ h1, h2, h3, h4 { font-weight: 400; }
   /* Fade in while hovering */
   opacity: 0.95;
   transition-delay: 0;
-}
-
-/* Position and style citation */
-#cite {
-  position: absolute;
-  bottom: 10px;
-  left: 10px;
-  font-size: 12px;
 }
 
 /* If not using map tiles, show a white background */
