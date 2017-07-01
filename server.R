@@ -1,14 +1,73 @@
-source("constants.R")
+# source("constants.R")
 
-library(shiny)
-library(leaflet)
 library(RColorBrewer)
 library(scales)
 library(lattice)
-library(dplyr)
-library(ggvis)
 
 shinyServer(function(input, output, session) {
+
+	## Initialise ########################################
+
+	session$userData$dbDriverName <- dbDriverNameDefault
+
+	closeConnection <- function(dbDriverName) {
+		if (grepl("SQL", dbDriverName)) {
+			dbDisconnect(session$userData$conn)
+		}
+	}
+
+	updateDatabase <- function(input) {
+		dbDriverNameOld <- session$userData$dbDriverName
+		closeConnection(dbDriverNameOld)
+		dbDriverName <- input$dbType
+		session$userData$dbDriverName <- dbDriverName
+		conn <- NULL
+		fileContents <- NULL
+		if (dbDriverName == "MySQL") {
+			conn <- dbConnect(dbDriver(dbDriverName), user=input$dbUserS, password=input$dbPwS, dbname=input$dbNameS, host=input$dbUrlS)
+		} else if (dbDriverName == "PostgreSQL") {
+			conn <- dbConnect(dbDriver(dbDriverName), user=input$dbUserS, password=input$dbPwS, dbname=input$dbNameS, host=input$dbUrlS, port=dbDetails$SQL$port)
+		} else if (dbDriverName == "MongoDB") {
+			conn <- mongo(url=input$dbUrlM, db=input$dbNameM, collection=input$dbCollM)
+		} else if (dbDriverName == "Neo4j") {
+			conn <- startGraph(input$dbUrlN, username=input$dbUserN, password=input$dbPwN)
+		} else if (dbDriverName %in% c("SQLite", "JSONFile", "CSVFile")) {
+			inFile <- input$file1
+			if (is.null(inFile))
+				return(NULL)
+			file <- inFile$datapath
+			if (input$dbType == 'SQLite')
+				conn <- dbConnect(dbDriver(dbDriverName), file)
+			else if (input$dbType == 'JSONFile')
+				fileContents <- readLines(file)
+			else if (input$dbType == 'CSVFile')
+				fileContents <- read.csv(file, header=TRUE)
+		}
+		# conn <<- conn
+		# fileContents <<- fileContents
+		session$userData$conn <- conn
+		session$userData$fileContents <- fileContents
+	}
+
+	updateData <- function(query) {
+		dbDriverName <- session$userData$dbDriverName
+		conn <- session$userData$conn
+		fileContents <- session$userData$fileContents
+		updateDataInner(query, dbDriverName, conn, fileContents)
+	}
+
+	observeEvent(input$setButton, {
+		updateDatabase(input)
+		updateTextAreaInput(session = session, inputId = "query", value = dbQueries[[input$dbType]])
+	})
+
+	observeEvent(input$runButton, {
+		updateData(input$query)
+		vars <- values[["vars"]]
+		for (varname in c("colorL", "sizeL", "xvarG", "yvarG", "colorG", "strokeG", "sizeG", "xvarP", "yvarP", "zvarP", "colorP", "sizeP", "shapeP")) {
+			updateSelectInput(session = session, inputId = varname, choices = vars, selected = input[[varname]])
+		}
+	})
 
 	## Leaflet ###########################################
 
@@ -38,9 +97,18 @@ shinyServer(function(input, output, session) {
 		} else {
 			colorData <- locdata[[colorBy]]
 		}
-		if (is.numeric(colorData)) {
+		if (is.numeric(colorData) && TRUE) {
 			pal <- colorBin("Spectral", colorData, 7, pretty = FALSE)
-		} else {
+			pal <- tryCatch({
+				pal(colorData)
+				pal # needs to be here to assign the correct value
+			}, warning = function(w) {
+			}, error = function(e) {
+				pal <- NULL
+			}, finally = {
+			})
+		}
+		if (!exists("pal") || is.null(pal)) {
 			pal <- colorFactor(topo.colors(length(colorData)), colorData)
 		}
 
@@ -100,14 +168,6 @@ shinyServer(function(input, output, session) {
 		})
 	})
 
-	observeEvent(input$loadButton, {
-		updateData(input$query)
-		vars <- values[["vars"]]
-		for (varname in c("colorL", "sizeL", "xvarG", "yvarG", "colorG", "strokeG", "sizeG", "xvarP", "yvarP", "zvarP", "colorP", "sizeP", "shapeP")) {
-			updateSelectInput(session = session, inputId = varname, choices = vars, selected = input[[varname]])
-		}
-	})
-
 	# necessary because shapes are not populated if the graph starts in a mode other than leaflet
 	observeEvent(input$graphType, {
 		addShapestoLeaflet()
@@ -116,7 +176,7 @@ shinyServer(function(input, output, session) {
 	## ggvis ###########################################
 
 	getOptVar <- function(varName, chosenInput, constant=0) {
-		if (chosenInput == "CONSTANT") {
+		if (chosenInput == "" || chosenInput == "CONSTANT") {
 			result <- prop(varName, constant)
 		} else {
 			result <- prop(varName, as.symbol(chosenInput))
@@ -261,4 +321,12 @@ shinyServer(function(input, output, session) {
 		action <- DT::dataTableAjax(session, cleantable)
 		DT::datatable(cleantable, options = list(ajax = list(url = action)), escape = FALSE)
 	})
+
+	## Misc ####################################################
+
+	# session$onSessionEnded({
+	# 	print("Stop!")
+	# 	stopApp
+	# }) 
+
 })

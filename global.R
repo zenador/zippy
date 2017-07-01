@@ -1,39 +1,35 @@
 source("constants.R")
 
+library(shiny)
 library(dplyr)
-
-if (dbDriverName == "MySQL") {
-	library(RMySQL)
-	conn <- dbConnect(dbDriver(dbDriverName), user=dbDetails$user, password=dbDetails$pw, dbname=dbDetails$name, host=dbDetails$host)
-} else if (dbDriverName == "PostgreSQL") {
-	library(RPostgreSQL)
-	conn <- dbConnect(dbDriver(dbDriverName), user=dbDetails$user, password=dbDetails$pw, dbname=dbDetails$name, host=dbDetails$host, port=dbDetails$port)
-} else if (dbDriverName == "SQLite") {
-	library(RSQLite)
-	conn <- dbConnect(dbDriver(dbDriverName), dbDetails$file)
-} else if (grepl("JSON", dbDriverName)) {
-	library(jsonlite)
-} else if (dbDriverName == "MongoDB") {
-	library(mongolite)
-	conn <- mongo(url=dbDetails$url, db=dbDetails$db, collection=dbDetails$collection)
-} else if (dbDriverName == "Neo4j") {
-	library(RNeo4j)
-	conn <- startGraph(dbDetails$url, username=dbDetails$user, password=dbDetails$pw)
-}
+library(leaflet)
+library(ggvis)
+library(plotly)
+if ("MySQL" %in% dbDrivers) library(RMySQL)
+if ("PostgreSQL" %in% dbDrivers) library(RPostgreSQL)
+if ("SQLite" %in% dbDrivers) library(RSQLite)
+if ("JSON" %in% dbDrivers) library(jsonlite)
+if ("MongoDB" %in% dbDrivers) library(mongolite)
+if ("Neo4j" %in% dbDrivers) library(RNeo4j)
 
 values <- reactiveValues()
 
-updateData <- function(query) {
+updateDataInner <- function(query, dbDriverName, conn=NULL, fileContents=NULL) {
+	# cat(file=stderr(), "db", dbDriverName, "\n")
 	if (dbDriverName == "JSON") {
 		rawlocdata <- fromJSON(query)
+	} else if (dbDriverName == "CSV") {
+		rawlocdata <- read.csv(text=query, header=TRUE)
 	} else if (dbDriverName == "JSONFile") {
-		json_string <- readLines(query)
-		rawlocdata <- fromJSON(json_string)
+		# json_string <- readLines(query)
+		rawlocdata <- fromJSON(fileContents)
+	} else if (dbDriverName == "CSVFile") {
+		rawlocdata <- fileContents
 	} else if (dbDriverName == "MongoDB") {
 		rawlocdata <- conn$find(query)
 	} else if (dbDriverName == "Neo4j") {
 		rawlocdata <- cypher(conn, query)
-	} else {
+	} else if (grepl("SQL", dbDriverName)) {
 		# rs <- dbSendQuery(conn, query)
 		# rawlocdata <- fetch(rs, n=-1)
 		rawlocdata <- dbGetQuery(conn, query)
@@ -55,4 +51,4 @@ updateData <- function(query) {
 	values[["vars"]] <- tempvars
 }
 
-updateData(dbQuery)
+updateDataInner(dbQueries[[dbDriverNameDefault]], dbDriverNameDefault)

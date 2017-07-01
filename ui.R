@@ -1,9 +1,4 @@
-source("constants.R")
-
-library(shiny)
-library(leaflet)
-library(ggvis)
-library(plotly)
+# source("constants.R")
 
 vars <- isolate(values[["vars"]])
 graphTypes <- c("leaflet", "ggvis", "plotly")
@@ -32,17 +27,17 @@ shinyUI(navbarPage("Zippy", id="nav",
 			conditionalPanel(
 				condition = "input.graphType == 'plotly'",
 				id = "plotlyPanel", class = "graphPanel",
-				plotlyOutput("chartP", width="80%")
+				plotlyOutput("chartP", width="80%", height="100%")
 			),
 
 			# Shiny versions prior to 0.11 should use class="modal" instead.
-			absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
+			absolutePanel(id = "controls", class = "panel panel-default controls", fixed = TRUE,
 				draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
 				width = 330, height = "auto",
 
-				# h2("ZIP explorer"),
+				h3("Graph Options"),
 
-				selectInput("graphType", "Graph Type", graphTypes, selected = "leaflet"),
+				selectInput("graphType", "Type", graphTypes, selected = "leaflet"),
 
 				conditionalPanel(
 					condition = "input.graphType == 'leaflet'",
@@ -67,8 +62,44 @@ shinyUI(navbarPage("Zippy", id="nav",
 					selectInput("shapeP", "Shape", vars)
 				),
 
-				tags$textarea(id="query", rows=3, cols=40, dbQuery),
-				actionButton("loadButton", "Run")
+				# tags$textarea(id="query", rows=3, cols=30, dbQuery),
+				textAreaInput("query", "Query", dbQueries[[dbDriverNameDefault]]),
+				actionButton("runButton", "Run"),
+			# ),
+
+			# absolutePanel(id = "dbcontrols", class = "panel panel-default controls", fixed = TRUE,
+			# 	draggable = TRUE, top = "auto", left = "auto", right = 20, bottom = 20,
+			# 	width = 330, height = "auto",
+
+				h3("Database Options"),
+
+				selectInput("dbType", "Type", dbDrivers, selected = dbDriverNameDefault),
+
+				conditionalPanel(
+					condition = "input.dbType == 'MySQL' || input.dbType == 'PostgreSQL'",
+					textInput("dbUserS", "User", dbDetails$SQL$user),
+					passwordInput("dbPwS", "Password", dbDetails$SQL$pw),
+					textInput("dbNameS", "DB Name", dbDetails$SQL$name),
+					textInput("dbUrlS", "URL", dbDetails$SQL$host)
+				),
+				conditionalPanel(
+					condition = "input.dbType == 'MongoDB'",
+					textInput("dbUrlM", "URL", dbDetails$MongoDB$url),
+					textInput("dbNameM", "DB Name", dbDetails$MongoDB$db),
+					textInput("dbCollM", "Collection", dbDetails$MongoDB$coll)
+				),
+				conditionalPanel(
+					condition = "input.dbType == 'Neo4j'",
+					textInput("dbUserN", "User", dbDetails$Neo4j$user),
+					passwordInput("dbPwN", "Password", dbDetails$Neo4j$pw),
+					textInput("dbUrlN", "URL", dbDetails$Neo4j$url)
+				),
+				conditionalPanel(
+					condition = "input.dbType == 'SQLite' || input.dbType == 'JSONFile' || input.dbType == 'CSVFile'",
+					fileInput("file1", "Choose File")
+				),
+
+				actionButton("setButton", "Set")
 			)
 		)
 	),
