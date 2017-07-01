@@ -14,7 +14,7 @@ if ("Neo4j" %in% dbDrivers) library(RNeo4j)
 
 values <- reactiveValues()
 
-updateDataInner <- function(query, dbDriverName, conn=NULL, fileContents=NULL) {
+updateDataInner <- function(query, dbDriverName, conn=NULL, fileContents=NULL, mongoAggregate=FALSE) {
 	# cat(file=stderr(), "db", dbDriverName, "\n")
 	if (dbDriverName == "JSON") {
 		rawlocdata <- fromJSON(query)
@@ -26,7 +26,10 @@ updateDataInner <- function(query, dbDriverName, conn=NULL, fileContents=NULL) {
 	} else if (dbDriverName == "CSVFile") {
 		rawlocdata <- fileContents
 	} else if (dbDriverName == "MongoDB") {
-		rawlocdata <- conn$find(query)
+		if (mongoAggregate)
+			rawlocdata <- conn$aggregate(query)
+		else
+			rawlocdata <- conn$find(query)
 	} else if (dbDriverName == "Neo4j") {
 		rawlocdata <- cypher(conn, query)
 	} else if (grepl("SQL", dbDriverName)) {
@@ -34,6 +37,8 @@ updateDataInner <- function(query, dbDriverName, conn=NULL, fileContents=NULL) {
 		# rawlocdata <- fetch(rs, n=-1)
 		rawlocdata <- dbGetQuery(conn, query)
 	}
+	if (is.null(rawlocdata) || is.null(nrow(rawlocdata)) || nrow(rawlocdata) == 0)
+		return()
 	rawlocdata$rowid_<-seq.int(nrow(rawlocdata))
 
 	tempvars <- c()

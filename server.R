@@ -29,6 +29,7 @@ shinyServer(function(input, output, session) {
 			conn <- dbConnect(dbDriver(dbDriverName), user=input$dbUserS, password=input$dbPwS, dbname=input$dbNameS, host=input$dbUrlS, port=dbDetails$SQL$port)
 		} else if (dbDriverName == "MongoDB") {
 			conn <- mongo(url=input$dbUrlM, db=input$dbNameM, collection=input$dbCollM)
+			session$userData$mongoAggregate <- input$dbAggM
 		} else if (dbDriverName == "Neo4j") {
 			conn <- startGraph(input$dbUrlN, username=input$dbUserN, password=input$dbPwN)
 		} else if (dbDriverName %in% c("SQLite", "JSONFile", "CSVFile")) {
@@ -53,12 +54,17 @@ shinyServer(function(input, output, session) {
 		dbDriverName <- session$userData$dbDriverName
 		conn <- session$userData$conn
 		fileContents <- session$userData$fileContents
-		updateDataInner(query, dbDriverName, conn, fileContents)
+		mongoAggregate <- session$userData$mongoAggregate
+		updateDataInner(query, dbDriverName, conn, fileContents, mongoAggregate)
 	}
 
 	observeEvent(input$setButton, {
 		updateDatabase(input)
-		updateTextAreaInput(session = session, inputId = "query", value = dbQueries[[input$dbType]])
+		if (input$dbType == "MongoDB" && input$dbAggM)
+			dbQuery <- dbQueries$MongoDB_Agg
+		else
+			dbQuery <- dbQueries[[input$dbType]]
+		updateTextAreaInput(session = session, inputId = "query", value = dbQuery)
 	})
 
 	observeEvent(input$runButton, {

@@ -86,7 +86,8 @@ shinyUI(navbarPage("Zippy", id="nav",
 					condition = "input.dbType == 'MongoDB'",
 					textInput("dbUrlM", "URL", dbDetails$MongoDB$url),
 					textInput("dbNameM", "DB Name", dbDetails$MongoDB$db),
-					textInput("dbCollM", "Collection", dbDetails$MongoDB$coll)
+					textInput("dbCollM", "Collection", dbDetails$MongoDB$coll),
+					checkboxInput("dbAggM", "Aggregate Query?", FALSE)
 				),
 				conditionalPanel(
 					condition = "input.dbType == 'Neo4j'",
