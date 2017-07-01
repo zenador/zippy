@@ -17,42 +17,42 @@ valuesDefault <- reactiveValues()
 updateDataInner <- function(query, dbDriverName, rvDict, conn=NULL, fileContents=NULL, mongoAggregate=FALSE) {
 	# cat(file=stderr(), "db", dbDriverName, "\n")
 	if (dbDriverName == "JSON") {
-		rawlocdata <- fromJSON(query)
+		dataPoints <- fromJSON(query)
 	} else if (dbDriverName == "CSV") {
-		rawlocdata <- read.csv(text=query, header=TRUE)
+		dataPoints <- read.csv(text=query, header=TRUE)
 	} else if (dbDriverName == "JSONFile") {
 		# json_string <- readLines(query)
-		rawlocdata <- fromJSON(fileContents)
+		dataPoints <- fromJSON(fileContents)
 	} else if (dbDriverName == "CSVFile") {
-		rawlocdata <- fileContents
+		dataPoints <- fileContents
 	} else if (dbDriverName == "MongoDB") {
 		if (mongoAggregate)
-			rawlocdata <- conn$aggregate(query)
+			dataPoints <- conn$aggregate(query)
 		else
-			rawlocdata <- conn$find(query)
+			dataPoints <- conn$find(query)
 	} else if (dbDriverName == "Neo4j") {
-		rawlocdata <- cypher(conn, query)
+		dataPoints <- cypher(conn, query)
 	} else if (grepl("SQL", dbDriverName)) {
 		# rs <- dbSendQuery(conn, query)
-		# rawlocdata <- fetch(rs, n=-1)
-		rawlocdata <- dbGetQuery(conn, query)
+		# dataPoints <- fetch(rs, n=-1)
+		dataPoints <- dbGetQuery(conn, query)
 	}
-	if (is.null(rawlocdata) || is.null(nrow(rawlocdata)) || nrow(rawlocdata) == 0)
+	if (is.null(dataPoints) || is.null(nrow(dataPoints)) || nrow(dataPoints) == 0)
 		return()
-	rawlocdata$rowid_<-seq.int(nrow(rawlocdata))
+	dataPoints$rowid_<-seq.int(nrow(dataPoints))
 
 	tempvars <- c()
-	for(i in names(rawlocdata)) tempvars <- c(tempvars, i)
-	names(tempvars) <- names(rawlocdata)
+	for(i in names(dataPoints)) tempvars <- c(tempvars, i)
+	names(tempvars) <- names(dataPoints)
 	tempvars <- c(tempvars, CONSTANT="CONSTANT")
 
 	# Leaflet bindings are a bit slow; for now we'll just sample to compensate
 	set.seed(as.numeric(Sys.time()))
-	tempSampleSize <- min(c(nrow(rawlocdata), sampleSize))
-	locdata <- rawlocdata[sample.int(nrow(rawlocdata), tempSampleSize),]
+	tempSampleSize <- min(c(nrow(dataPoints), sampleSize))
+	sampleDataPoints <- dataPoints[sample.int(nrow(dataPoints), tempSampleSize),]
 
-	rvDict$rawlocdata <- rawlocdata
-	rvDict$locdata <- locdata
+	rvDict$dataPoints <- dataPoints
+	rvDict$sampleDataPoints <- sampleDataPoints
 	rvDict$vars <- tempvars
 }
 

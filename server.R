@@ -10,8 +10,8 @@ shinyServer(function(input, output, session) {
 
 	session$userData$dbDriverName <- dbDriverNameDefault
 	session$userData$values <- reactiveValues()
-	session$userData$values$rawlocdata <- isolate(valuesDefault$rawlocdata)
-	session$userData$values$locdata <- isolate(valuesDefault$locdata)
+	session$userData$values$dataPoints <- isolate(valuesDefault$dataPoints)
+	session$userData$values$sampleDataPoints <- isolate(valuesDefault$sampleDataPoints)
 	session$userData$values$vars <- isolate(valuesDefault$vars)
 
 	closeConnection <- function(dbDriverName) {
@@ -99,14 +99,14 @@ shinyServer(function(input, output, session) {
 		colorBy <- input$colorL
 		sizeBy <- input$sizeL
 
-		locdata <- session$userData$values$locdata
+		sampleDataPoints <- session$userData$values$sampleDataPoints
 
 		if (colorBy == "CONSTANT") {
-			reps <- nrow(locdata)
+			reps <- nrow(sampleDataPoints)
 			colorData <- rep("a", each=reps)
 			# colorData <- (1:reps)
 		} else {
-			colorData <- locdata[[colorBy]]
+			colorData <- sampleDataPoints[[colorBy]]
 		}
 		if (is.numeric(colorData) && TRUE) {
 			pal <- colorBin("Spectral", colorData, 7, pretty = FALSE)
@@ -123,14 +123,14 @@ shinyServer(function(input, output, session) {
 			pal <- colorFactor(topo.colors(length(colorData)), colorData)
 		}
 
-		sizeData <- locdata[[sizeBy]]
+		sizeData <- sampleDataPoints[[sizeBy]]
 		if (sizeBy == "CONSTANT" || !is.numeric(sizeData)) {
 			radius <- 1500
 		} else {
 			radius <- sizeData / max(sizeData) * 1500
 		}
 
-		map <- leafletProxy("map", data = locdata) %>%
+		map <- leafletProxy("map", data = sampleDataPoints) %>%
 			clearShapes() %>%
 			clearControls() %>%
 			addCircles(~longitude, ~latitude, radius=radius, stroke=FALSE, fillOpacity=0.4, fillColor=~pal(colorData))
@@ -153,9 +153,9 @@ shinyServer(function(input, output, session) {
 
 	# Show a popup at the given location
 	showItemPopup <- function(itemid, lat, lng) {
-		locdata <- session$userData$values$rawlocdata
+		sampleDataPoints <- session$userData$values$sampleDataPoints
 
-		selectedItem <- locdata[locdata$longitude == lng & locdata$latitude == lat,]
+		selectedItem <- sampleDataPoints[sampleDataPoints$longitude == lng & sampleDataPoints$latitude == lat,]
 
 		x <- list()
 		for(i in names(selectedItem)) {
@@ -199,7 +199,7 @@ shinyServer(function(input, output, session) {
 		if (is.null(x)) return(NULL)
 		if (is.null(x$rowid_)) return(NULL)
 
-		all_things <- session$userData$values$rawlocdata
+		all_things <- session$userData$values$dataPoints
 		this_thing <- all_things[all_things$rowid_ == x$rowid_, ]
 		
 		this_list <- c()
@@ -223,7 +223,7 @@ shinyServer(function(input, output, session) {
 		size <- getOptVar("size", size_name, 100)
 
 		graphy <-
-			session$userData$values$rawlocdata %>%
+			session$userData$values$dataPoints %>%
 			ggvis(xvar, yvar) %>%
 			layer_points(
 				size,
@@ -258,7 +258,7 @@ shinyServer(function(input, output, session) {
 		yvar_name <- input$yvarP
 		zvar_name <- input$zvarP
 
-		data <- session$userData$values$rawlocdata
+		data <- session$userData$values$dataPoints
 
 		tooltip <- c()
 		for(name in names(data)) {
@@ -328,7 +328,7 @@ shinyServer(function(input, output, session) {
 	## Data Explorer ###########################################
 
 	output$loctable <- DT::renderDataTable({
-		cleantable <- session$userData$values$rawlocdata
+		cleantable <- session$userData$values$dataPoints
 		action <- DT::dataTableAjax(session, cleantable)
 		DT::datatable(cleantable, options = list(ajax = list(url = action)), escape = FALSE)
 	})
