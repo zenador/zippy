@@ -12,9 +12,9 @@ if ("JSON" %in% dbDrivers) library(jsonlite)
 if ("MongoDB" %in% dbDrivers) library(mongolite)
 if ("Neo4j" %in% dbDrivers) library(RNeo4j)
 
-values <- reactiveValues()
+valuesDefault <- reactiveValues()
 
-updateDataInner <- function(query, dbDriverName, conn=NULL, fileContents=NULL, mongoAggregate=FALSE) {
+updateDataInner <- function(query, dbDriverName, rvDict, conn=NULL, fileContents=NULL, mongoAggregate=FALSE) {
 	# cat(file=stderr(), "db", dbDriverName, "\n")
 	if (dbDriverName == "JSON") {
 		rawlocdata <- fromJSON(query)
@@ -51,9 +51,9 @@ updateDataInner <- function(query, dbDriverName, conn=NULL, fileContents=NULL, m
 	tempSampleSize <- min(c(nrow(rawlocdata), sampleSize))
 	locdata <- rawlocdata[sample.int(nrow(rawlocdata), tempSampleSize),]
 
-	values[["rawlocdata"]] <- rawlocdata
-	values[["locdata"]] <- locdata
-	values[["vars"]] <- tempvars
+	rvDict$rawlocdata <- rawlocdata
+	rvDict$locdata <- locdata
+	rvDict$vars <- tempvars
 }
 
-updateDataInner(dbQueries[[dbDriverNameDefault]], dbDriverNameDefault)
+updateDataInner(dbQueries[[dbDriverNameDefault]], dbDriverNameDefault, valuesDefault)

@@ -1,6 +1,6 @@
 # source("constants.R")
 
-vars <- isolate(values[["vars"]])
+vars <- isolate(valuesDefault$vars)
 graphTypes <- c("leaflet", "ggvis", "plotly")
 
 shinyUI(navbarPage("Zippy", id="nav",
@@ -63,7 +63,7 @@ shinyUI(navbarPage("Zippy", id="nav",
 				),
 
 				# tags$textarea(id="query", rows=3, cols=30, dbQuery),
-				textAreaInput("query", "Query", dbQueries[[dbDriverNameDefault]]),
+				textAreaInput("query", "Query", dbQueries[[dbDriverNameDefault]], rows=4),
 				actionButton("runButton", "Run"),
 			# ),
 

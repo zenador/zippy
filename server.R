@@ -9,6 +9,10 @@ shinyServer(function(input, output, session) {
 	## Initialise ########################################
 
 	session$userData$dbDriverName <- dbDriverNameDefault
+	session$userData$values <- reactiveValues()
+	session$userData$values$rawlocdata <- isolate(valuesDefault$rawlocdata)
+	session$userData$values$locdata <- isolate(valuesDefault$locdata)
+	session$userData$values$vars <- isolate(valuesDefault$vars)
 
 	closeConnection <- function(dbDriverName) {
 		if (grepl("SQL", dbDriverName)) {
@@ -52,10 +56,11 @@ shinyServer(function(input, output, session) {
 
 	updateData <- function(query) {
 		dbDriverName <- session$userData$dbDriverName
+		values <- session$userData$values
 		conn <- session$userData$conn
 		fileContents <- session$userData$fileContents
 		mongoAggregate <- session$userData$mongoAggregate
-		updateDataInner(query, dbDriverName, conn, fileContents, mongoAggregate)
+		updateDataInner(query, dbDriverName, values, conn, fileContents, mongoAggregate)
 	}
 
 	observeEvent(input$setButton, {
@@ -69,7 +74,7 @@ shinyServer(function(input, output, session) {
 
 	observeEvent(input$runButton, {
 		updateData(input$query)
-		vars <- values[["vars"]]
+		vars <- session$userData$values$vars
 		for (varname in c("colorL", "sizeL", "xvarG", "yvarG", "colorG", "strokeG", "sizeG", "xvarP", "yvarP", "zvarP", "colorP", "sizeP", "shapeP")) {
 			updateSelectInput(session = session, inputId = varname, choices = vars, selected = input[[varname]])
 		}
@@ -94,7 +99,7 @@ shinyServer(function(input, output, session) {
 		colorBy <- input$colorL
 		sizeBy <- input$sizeL
 
-		locdata <- values$locdata
+		locdata <- session$userData$values$locdata
 
 		if (colorBy == "CONSTANT") {
 			reps <- nrow(locdata)
@@ -148,7 +153,7 @@ shinyServer(function(input, output, session) {
 
 	# Show a popup at the given location
 	showItemPopup <- function(itemid, lat, lng) {
-		locdata <- values$rawlocdata
+		locdata <- session$userData$values$rawlocdata
 
 		selectedItem <- locdata[locdata$longitude == lng & locdata$latitude == lat,]
 
@@ -194,7 +199,7 @@ shinyServer(function(input, output, session) {
 		if (is.null(x)) return(NULL)
 		if (is.null(x$rowid_)) return(NULL)
 
-		all_things <- values$rawlocdata
+		all_things <- session$userData$values$rawlocdata
 		this_thing <- all_things[all_things$rowid_ == x$rowid_, ]
 		
 		this_list <- c()
@@ -218,7 +223,7 @@ shinyServer(function(input, output, session) {
 		size <- getOptVar("size", size_name, 100)
 
 		graphy <-
-			values$rawlocdata %>%
+			session$userData$values$rawlocdata %>%
 			ggvis(xvar, yvar) %>%
 			layer_points(
 				size,
@@ -253,7 +258,7 @@ shinyServer(function(input, output, session) {
 		yvar_name <- input$yvarP
 		zvar_name <- input$zvarP
 
-		data <- values$rawlocdata
+		data <- session$userData$values$rawlocdata
 
 		tooltip <- c()
 		for(name in names(data)) {
@@ -323,7 +328,7 @@ shinyServer(function(input, output, session) {
 	## Data Explorer ###########################################
 
 	output$loctable <- DT::renderDataTable({
-		cleantable <- values$rawlocdata
+		cleantable <- session$userData$values$rawlocdata
 		action <- DT::dataTableAjax(session, cleantable)
 		DT::datatable(cleantable, options = list(ajax = list(url = action)), escape = FALSE)
 	})
