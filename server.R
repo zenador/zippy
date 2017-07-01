@@ -27,27 +27,36 @@ shinyServer(function(input, output, session) {
 		session$userData$dbDriverName <- dbDriverName
 		conn <- NULL
 		fileContents <- NULL
-		if (dbDriverName == "MySQL") {
-			conn <- dbConnect(dbDriver(dbDriverName), user=input$dbUserS, password=input$dbPwS, dbname=input$dbNameS, host=input$dbUrlS)
-		} else if (dbDriverName == "PostgreSQL") {
-			conn <- dbConnect(dbDriver(dbDriverName), user=input$dbUserS, password=input$dbPwS, dbname=input$dbNameS, host=input$dbUrlS, port=dbDetails$SQL$port)
-		} else if (dbDriverName == "MongoDB") {
-			conn <- mongo(url=input$dbUrlM, db=input$dbNameM, collection=input$dbCollM)
-			session$userData$mongoAggregate <- input$dbAggM
-		} else if (dbDriverName == "Neo4j") {
-			conn <- startGraph(input$dbUrlN, username=input$dbUserN, password=input$dbPwN)
-		} else if (dbDriverName %in% c("SQLite", "JSONFile", "CSVFile")) {
-			inFile <- input$file1
-			if (is.null(inFile))
-				return(NULL)
-			file <- inFile$datapath
-			if (input$dbType == 'SQLite')
-				conn <- dbConnect(dbDriver(dbDriverName), file)
-			else if (input$dbType == 'JSONFile')
-				fileContents <- readLines(file)
-			else if (input$dbType == 'CSVFile')
-				fileContents <- read.csv(file, header=TRUE)
-		}
+		isOkay <- tryCatch({
+			if (dbDriverName == "MySQL") {
+				conn <- dbConnect(dbDriver(dbDriverName), user=input$dbUserS, password=input$dbPwS, dbname=input$dbNameS, host=input$dbUrlS)
+			} else if (dbDriverName == "PostgreSQL") {
+				conn <- dbConnect(dbDriver(dbDriverName), user=input$dbUserS, password=input$dbPwS, dbname=input$dbNameS, host=input$dbUrlS, port=dbDetails$SQL$port)
+			} else if (dbDriverName == "MongoDB") {
+				conn <- mongo(url=input$dbUrlM, db=input$dbNameM, collection=input$dbCollM)
+				session$userData$mongoAggregate <- input$dbAggM
+			} else if (dbDriverName == "Neo4j") {
+				conn <- startGraph(input$dbUrlN, username=input$dbUserN, password=input$dbPwN)
+			} else if (dbDriverName %in% c("SQLite", "JSONFile", "CSVFile")) {
+				inFile <- input$file1
+				if (is.null(inFile))
+					return(NULL)
+				file <- inFile$datapath
+				if (input$dbType == 'SQLite')
+					conn <- dbConnect(dbDriver(dbDriverName), file)
+				else if (input$dbType == 'JSONFile')
+					fileContents <- readLines(file)
+				else if (input$dbType == 'CSVFile')
+					fileContents <- read.csv(file, header=TRUE)
+			}
+			TRUE
+		}, error = function(e) {
+			print(e)
+			session$sendCustomMessage(type='error_alert', message=e$message)
+			FALSE
+		})
+		if (!isOkay)
+			return()
 		# conn <<- conn
 		# fileContents <<- fileContents
 		session$userData$conn <- conn
@@ -60,7 +69,9 @@ shinyServer(function(input, output, session) {
 		conn <- session$userData$conn
 		fileContents <- session$userData$fileContents
 		mongoAggregate <- session$userData$mongoAggregate
-		updateDataInner(query, dbDriverName, values, conn, fileContents, mongoAggregate)
+		errorMsg <- updateDataInner(query, dbDriverName, values, conn, fileContents, mongoAggregate)
+		if (!is.null(errorMsg))
+			session$sendCustomMessage(type='error_alert', message=errorMsg)
 	}
 
 	observeEvent(input$setButton, {

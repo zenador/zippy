@@ -16,29 +16,37 @@ valuesDefault <- reactiveValues()
 
 updateDataInner <- function(query, dbDriverName, rvDict, conn=NULL, fileContents=NULL, mongoAggregate=FALSE) {
 	# cat(file=stderr(), "db", dbDriverName, "\n")
-	if (dbDriverName == "JSON") {
-		dataPoints <- fromJSON(query)
-	} else if (dbDriverName == "CSV") {
-		dataPoints <- read.csv(text=query, header=TRUE)
-	} else if (dbDriverName == "JSONFile") {
-		# json_string <- readLines(query)
-		dataPoints <- fromJSON(fileContents)
-	} else if (dbDriverName == "CSVFile") {
-		dataPoints <- fileContents
-	} else if (dbDriverName == "MongoDB") {
-		if (mongoAggregate)
-			dataPoints <- conn$aggregate(query)
-		else
-			dataPoints <- conn$find(query)
-	} else if (dbDriverName == "Neo4j") {
-		dataPoints <- cypher(conn, query)
-	} else if (grepl("SQL", dbDriverName)) {
-		# rs <- dbSendQuery(conn, query)
-		# dataPoints <- fetch(rs, n=-1)
-		dataPoints <- dbGetQuery(conn, query)
-	}
-	if (is.null(dataPoints) || is.null(nrow(dataPoints)) || nrow(dataPoints) == 0)
-		return()
+	errorMsg <- tryCatch({
+		if (dbDriverName == "JSON") {
+			dataPoints <- fromJSON(query)
+		} else if (dbDriverName == "CSV") {
+			dataPoints <- read.csv(text=query, header=TRUE)
+		} else if (dbDriverName == "JSONFile") {
+			# json_string <- readLines(query)
+			dataPoints <- fromJSON(fileContents)
+		} else if (dbDriverName == "CSVFile") {
+			dataPoints <- fileContents
+		} else if (dbDriverName == "MongoDB") {
+			if (mongoAggregate)
+				dataPoints <- conn$aggregate(query)
+			else
+				dataPoints <- conn$find(query)
+		} else if (dbDriverName == "Neo4j") {
+			dataPoints <- cypher(conn, query)
+		} else if (grepl("SQL", dbDriverName)) {
+			# rs <- dbSendQuery(conn, query)
+			# dataPoints <- fetch(rs, n=-1)
+			dataPoints <- dbGetQuery(conn, query)
+		}
+		NULL
+	}, error = function(e) {
+		print(e)
+		e$message
+	})
+	if (!is.null(errorMsg))
+		return(errorMsg)
+	else if (is.null(dataPoints) || is.null(nrow(dataPoints)) || nrow(dataPoints) == 0)
+		return("No data points found.")
 	dataPoints$rowid_<-seq.int(nrow(dataPoints))
 
 	tempvars <- c()
@@ -54,6 +62,7 @@ updateDataInner <- function(query, dbDriverName, rvDict, conn=NULL, fileContents
 	rvDict$dataPoints <- dataPoints
 	rvDict$sampleDataPoints <- sampleDataPoints
 	rvDict$vars <- tempvars
+	return()
 }
 
 updateDataInner(dbQueries[[dbDriverNameDefault]], dbDriverNameDefault, valuesDefault)

@@ -107,5 +107,9 @@ shinyUI(navbarPage("Zippy", id="nav",
 
 	tabPanel("Data explorer",
 		DT::dataTableOutput("loctable")
+	),
+
+	singleton(
+		tags$head(includeScript("message_handler.js"))
 	)
 ))
